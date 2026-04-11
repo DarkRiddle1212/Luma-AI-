@@ -1,0 +1,98 @@
+# Luma Memory Module - Default Configuration
+# ============================================================================
+# This file provides default configuration values for the Luma Memory Module.
+# 
+# To customize settings:
+# 1. Create a .env file (see .env.example for template)
+# 2. Set environment variables
+# 3. Pass custom config file path to MemoryModuleConfig.load_config()
+#
+# Priority: Environment Variables > .env file > Defaults
+# ============================================================================
+
+# Storage Settings
+# ----------------------------------------------------------------------------
+storage:
+  # Path to SQLite database file
+  # Directory will be created automatically if it doesn't exist
+  db_path: "./data/luma_memory.db"
+  
+  # Number of memory entries to cache in LRU cache for fast retrieval
+  # Higher values use more memory but improve read performance
+  cache_size: 1000
+  
+  # Maximum storage size in megabytes before logging a warning
+  # Helps prevent unbounded storage growth
+  max_storage_size_mb: 1000
+
+# Summarization Settings
+# ----------------------------------------------------------------------------
+summarization:
+  # Number of entries before triggering automatic summarization
+  # Summarization reduces storage by consolidating similar entries
+  summarization_threshold: 1000
+  
+  # Similarity threshold (0.0-1.0) for identifying redundant entries
+  # Higher values require more similarity to trigger summarization
+  similarity_threshold: 0.8
+  
+  # Number of days to retain raw entries before summarization eligibility
+  # Recent entries are kept in full detail
+  retention_days_raw: 30
+  
+  # Number of days to retain summarized entries before deletion
+  # Summaries are kept longer than raw entries
+  retention_days_summary: 365
+
+# Encryption Settings
+# ----------------------------------------------------------------------------
+encryption:
+  # Path to encryption key file
+  # Will be generated automatically if it doesn't exist
+  # Keep this file secure and backed up
+  encryption_key_path: "./keys/encryption.key"
+
+# API Settings
+# ----------------------------------------------------------------------------
+api:
+  # API server host address
+  # Use "0.0.0.0" to listen on all interfaces
+  # Use "127.0.0.1" for localhost only (more secure)
+  api_host: "0.0.0.0"
+  
+  # API server port number
+  api_port: 8000
+  
+  # Number of API worker processes for handling concurrent requests
+  # Recommended: Number of CPU cores
+  api_workers: 4
+
+# Performance Settings
+# ----------------------------------------------------------------------------
+performance:
+  # Maximum time in milliseconds for query operations to complete
+  # Queries exceeding this time will be logged as slow
+  query_timeout_ms: 200
+  
+  # Number of database connections to maintain in the pool
+  # Higher values support more concurrent operations
+  connection_pool_size: 10
+
+# Monitoring Settings
+# ----------------------------------------------------------------------------
+monitoring:
+  # Enable collection of performance metrics and statistics
+  # Minimal performance impact when enabled
+  enable_metrics: true
+  
+  # Logging level
+  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  # Use DEBUG for development, INFO for production
+  log_level: "INFO"
+
+# Notes
+# ----------------------------------------------------------------------------
+# - All paths are relative to the working directory where the application runs
+# - For production deployments, consider using absolute paths
+# - Adjust cache_size and connection_pool_size based on available memory
+# - Monitor storage size and adjust retention policies as needed

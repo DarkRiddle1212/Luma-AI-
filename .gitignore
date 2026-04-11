@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Luma specific
+*.db
+*.json
+luma_memory.db
+luma_memory.json
+example_memory.db
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kiro specs
+.kiro/
+
+# Hypothesis generated data
+.hypothesis/
+luma/.hypothesis/
+
+# Encryption keys
+keys/
+
+# Generated test output files
+test_output.txt
+test_results.txt
+test_results.xml
