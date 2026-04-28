@@ -14,6 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from luma.config import settings
 from luma.database import Base, engine, get_db
 from luma.api.routes import router as api_router
+from luma.api.middleware.logging import LoggingMiddleware
+from luma.api.middleware.error_handler import ErrorHandlerMiddleware
 from luma.utils.logger import setup_logging, get_logger
 
 
@@ -66,7 +68,12 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
+    # Error handling and logging middleware
+    # ErrorHandlerMiddleware is added last (outermost) so it wraps LoggingMiddleware
+    app.add_middleware(ErrorHandlerMiddleware)
+    app.add_middleware(LoggingMiddleware)
+
     # Include API routes
     app.include_router(api_router, prefix=settings.api_prefix)
     

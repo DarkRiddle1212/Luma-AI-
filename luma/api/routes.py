@@ -203,3 +203,15 @@ async def delete_memory(
     except NotFoundError as e:
         logger.warning(f"Memory not found: {e}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+# Register new API layer controller routers
+from luma.api.controllers.chat_controller import router as chat_router
+from luma.api.controllers.insight_controller import router as insight_router
+from luma.api.controllers.teacher_controller import router as teacher_router
+from luma.api.controllers.personalization_controller import router as personalization_router
+
+router.include_router(chat_router)
+router.include_router(insight_router)
+router.include_router(teacher_router)
+router.include_router(personalization_router)
