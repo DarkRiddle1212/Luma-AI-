@@ -6,6 +6,7 @@ cryptography==41.0.7
 pydantic>=2.10.0  # Updated for Python 3.14 compatibility
 pydantic-settings>=2.6.0  # Updated for Python 3.14 compatibility
 numpy>=1.24.0  # For similarity computation in injection engine
+google-generativeai>=0.3.0  # Gemini SDK for LLM provider integration
 
 # Testing dependencies
 pytest>=8.2  # Updated for pytest-asyncio compatibility

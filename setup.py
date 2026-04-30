@@ -34,6 +34,7 @@ setup(
         "cryptography>=41.0.7",
         "pydantic>=2.10.0",
         "pydantic-settings>=2.1.0",
+        "google-generativeai>=0.3.0",
     ],
     extras_require={
         "dev": [

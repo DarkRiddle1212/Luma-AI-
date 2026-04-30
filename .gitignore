@@ -44,6 +44,9 @@ luma_memory.db
 luma_memory.json
 example_memory.db
 
+# Environment variables (contains API keys)
+.env
+
 # Logs
 *.log
 

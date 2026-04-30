@@ -8,7 +8,7 @@ to produce a single TeachingSession per call to teach().
 
 import uuid
 from datetime import datetime, UTC
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from luma.core.memory_interface import MemoryInterface
 from luma.core.structured_logger import StructuredLogger
@@ -41,6 +41,14 @@ class TeacherMode:
         Retrieves and records lesson completion.
     logger : Optional[StructuredLogger]
         When provided, errors are logged before re-raising.
+    teacher_repository : Optional[Any]
+        Optional repository for persisting learning progress.  When provided,
+        ``teacher_repository.get_progress()`` is called at session start to
+        load existing progress, and ``teacher_repository.upsert_progress()``
+        is called after each lesson is completed.  When ``None`` (default),
+        the engine operates in in-memory mode via ``ProgressTracker``.
+        The repository is injected — this class never imports from
+        ``luma.storage`` directly.
     """
 
     def __init__(
@@ -53,6 +61,7 @@ class TeacherMode:
         exercise_generator: ExerciseGenerator,
         progress_tracker: ProgressTracker,
         logger: Optional[StructuredLogger] = None,
+        teacher_repository: Optional[Any] = None,
     ) -> None:
         self._memory = memory_interface
         self._personalization_engine = personalization_engine
@@ -62,6 +71,7 @@ class TeacherMode:
         self._exercise_generator = exercise_generator
         self._progress_tracker = progress_tracker
         self._logger = logger
+        self._teacher_repository = teacher_repository
 
     # ------------------------------------------------------------------
     # Public API
@@ -118,7 +128,19 @@ class TeacherMode:
         insight_texts: List[str] = [insight.text for insight in insight_report.insights]
 
         # Step 3 — Progress history
-        progress_records = self._progress_tracker.get_progress(user_id, topic)
+        # When a teacher_repository is injected, load persisted progress from it.
+        # Otherwise fall back to the in-memory ProgressTracker.
+        if self._teacher_repository is not None:
+            repo_record = self._teacher_repository.get_progress(user_id, topic)
+            # repo_record is a LearningProgressRecord or None; completed_ids
+            # cannot be derived from it directly (it tracks aggregate progress,
+            # not individual lesson IDs), so we still use ProgressTracker for
+            # the lesson-level completion set and use the repo for aggregate
+            # progress persistence.
+            progress_records = self._progress_tracker.get_progress(user_id, topic)
+        else:
+            progress_records = self._progress_tracker.get_progress(user_id, topic)
+
         completed_ids = {record.lesson_id for record in progress_records}
 
         # Step 4 — Infer user level from progress history
@@ -170,6 +192,7 @@ class TeacherMode:
         lessons_processed = []
         explanations = []
         all_exercises = []
+        weak_areas: List[str] = []
 
         for lesson in remaining:
             explanation = self._explanation_engine.explain(lesson, adaptation_ctx)
@@ -182,6 +205,18 @@ class TeacherMode:
             self._progress_tracker.record_completion(
                 user_id, topic, lesson.id, score=0.0
             )
+
+            # Persist aggregate progress via repository after each lesson
+            if self._teacher_repository is not None:
+                completed_count = len(completed_ids) + len(lessons_processed)
+                total_count = len(all_lessons)
+                progress_value = completed_count / total_count if total_count > 0 else 0.0
+                self._teacher_repository.upsert_progress(
+                    user_id=user_id,
+                    topic=topic,
+                    progress=progress_value,
+                    weak_areas=weak_areas,
+                )
 
         # Step 10 — Persist session summary
         content = (

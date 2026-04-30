@@ -5,6 +5,7 @@ This module provides centralized configuration using Pydantic Settings.
 Settings can be loaded from environment variables or .env file.
 """
 
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 
@@ -38,7 +39,17 @@ class Settings(BaseSettings):
     ranking_decay_constant: float = 0.0001  # Time decay rate (λ)
     ranking_similarity_threshold: float = 0.3  # Minimum similarity score
     ranking_score_threshold: float = 0.2  # Minimum final score
-    
+
+    # LLM configuration — api_key sourced from OPENAI_API_KEY env var
+    openai_api_key: str = ""
+    llm_model: str = "gpt-4o-mini"
+    llm_temperature: float = 0.7
+    llm_max_tokens: int = 1024
+    llm_timeout_seconds: float = 30.0
+    llm_max_retries: int = 3
+    llm_max_response_chars: int = 4000
+    llm_base_url: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

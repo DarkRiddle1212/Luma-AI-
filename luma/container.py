@@ -212,8 +212,41 @@ def initialize_application(
         
         # Step 4: Get LLM implementation
         if llm is None:
-            logger.info("No LLM provided, using StubLLM for testing")
-            llm = StubLLM()
+            try:
+                logger.info("No LLM provided, initializing provider-based LLM from environment")
+                
+                # Load configuration from environment variables
+                from luma.core.llm.config import load_llm_config_from_env
+                llm_config = load_llm_config_from_env()
+                
+                # Create provider using factory
+                from luma.core.llm.providers.provider_factory import ProviderFactory
+                from luma.core.llm.llm_client import ProviderLLMClient
+                from luma.core.llm.llm_client_adapter import LLMClientAdapter
+                from luma.core.structured_logger import StructuredLogger
+                
+                provider = ProviderFactory.create(
+                    provider_name=llm_config.provider_name,
+                    config=llm_config.provider_config,
+                    logger=StructuredLogger("provider_factory")
+                )
+                
+                # Create LLM client with provider
+                llm_client = ProviderLLMClient(
+                    provider=provider,
+                    config=llm_config,
+                    logger=StructuredLogger("llm_client")
+                )
+                
+                # Create adapter for ReasoningEngine
+                llm = LLMClientAdapter(llm_client, llm_config)
+                logger.info(f"Initialized provider-based LLM: {llm_config.provider_name}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to initialize provider-based LLM: {e}, falling back to StubLLM")
+                logger.warning("Check environment variables: LLM_PROVIDER, GEMINI_API_KEY, etc.")
+                from luma.core.llm_interface import StubLLM
+                llm = StubLLM()
         else:
             logger.info(f"Using provided LLM: {type(llm).__name__}")
         

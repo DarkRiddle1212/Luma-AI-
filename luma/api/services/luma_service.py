@@ -5,12 +5,21 @@ Accepts all core module dependencies via constructor injection and exposes
 one async method per endpoint group. Never instantiates core modules directly.
 """
 
+import json
 import time
+import uuid
 from typing import List, Optional
 
 from luma.core.insight_moments.schemas import TimingContext
 from luma.core.personalization.schemas import AdaptationContext
 from luma.core.teacher.schemas import TeachingSession
+from luma.core.llm.schemas import PromptContext, LLMRequest
+
+_CHAT_SYSTEM_INSTRUCTIONS = (
+    "You are Luma, a helpful and personalized AI assistant. "
+    "Use the provided context and memories to give a relevant, concise response. "
+    "Adapt your tone and style to the user's preferences."
+)
 
 
 class LumaService:
@@ -19,7 +28,7 @@ class LumaService:
 
     All dependencies are injected via the constructor — this class never
     instantiates MemoryInterface, InsightEngine, InsightMomentsEngine,
-    PersonalizationEngine, or TeacherMode directly.
+    PersonalizationEngine, TeacherMode, or LLMEngine directly.
 
     Parameters
     ----------
@@ -33,6 +42,10 @@ class LumaService:
         PersonalizationEngine for deriving AdaptationContext.
     teacher_mode :
         TeacherMode for running teaching sessions.
+    llm_engine :
+        LLMEngine for generating natural language responses.
+    logger :
+        Optional StructuredLogger for observability.
     """
 
     def __init__(
@@ -42,12 +55,16 @@ class LumaService:
         insight_moments_engine,
         personalization_engine,
         teacher_mode,
+        llm_engine=None,
+        logger=None,
     ) -> None:
         self._memory_interface = memory_interface
         self._insight_engine = insight_engine
         self._insight_moments_engine = insight_moments_engine
         self._personalization_engine = personalization_engine
         self._teacher_mode = teacher_mode
+        self._llm_engine = llm_engine
+        self._logger = logger
 
     # ------------------------------------------------------------------
     # Internal helper
@@ -73,6 +90,30 @@ class LumaService:
             "focus": adaptation_ctx.focus,
             "reasons": adaptation_ctx.reasons,
         }
+
+    @staticmethod
+    def _adaptation_ctx_to_profile_str(adaptation_ctx) -> str:
+        """Serialize AdaptationContext to a human-readable profile string."""
+        reasons_str = ""
+        if adaptation_ctx.reasons:
+            reasons_str = "; ".join(
+                f"{k}: {v}" for k, v in adaptation_ctx.reasons.items()
+            )
+        return (
+            f"Tone: {adaptation_ctx.tone}, "
+            f"Style: {adaptation_ctx.style}, "
+            f"Focus: {adaptation_ctx.focus}"
+            + (f". Reasons: {reasons_str}" if reasons_str else "")
+        )
+
+    @staticmethod
+    def _adaptation_ctx_to_constraints(adaptation_ctx) -> str:
+        """Derive output constraints string from AdaptationContext."""
+        return (
+            f"Respond in a {adaptation_ctx.tone} tone using a "
+            f"{adaptation_ctx.style} style, focusing on "
+            f"{adaptation_ctx.focus} content."
+        )
 
     # ------------------------------------------------------------------
     # Public async API
@@ -116,17 +157,41 @@ class LumaService:
         )
         adaptation_ctx = personalization_result.adaptation
 
-        # Step 3 — Construct context-injected prompt (simple string construction)
-        memory_texts = [m["content"] for m in memories]
-        context_str = "; ".join(memory_texts) if memory_texts else ""
-        prompt = (
-            f"Context: {context_str}\n"
-            f"Tone: {adaptation_ctx.tone}, Style: {adaptation_ctx.style}\n"
-            f"User: {message}"
-        )
+        # Step 3 — Convert memories to strings (not raw MemoryEntry objects)
+        memory_strings = [m["content"] for m in memories]
 
-        # Step 4 — Generate response (no separate reasoning engine injected)
-        response_str = f"Response to '{message}' for user '{user_id}'"
+        # Step 4 — Generate response via LLMEngine
+        if self._llm_engine is not None:
+            prompt_context = PromptContext(
+                system_instructions=_CHAT_SYSTEM_INSTRUCTIONS,
+                user_profile=self._adaptation_ctx_to_profile_str(adaptation_ctx),
+                relevant_memories=memory_strings,
+                current_input=message,
+                output_constraints=self._adaptation_ctx_to_constraints(adaptation_ctx),
+            )
+            llm_request = LLMRequest(
+                prompt_context=prompt_context,
+                model="gpt-4o-mini",
+                temperature=0.7,
+                max_tokens=1024,
+                request_id=str(uuid.uuid4()),
+            )
+            parsed = self._llm_engine.generate(llm_request)
+            if not parsed.is_valid:
+                if self._logger is not None:
+                    self._logger.log("luma_service_llm_fallback", {
+                        "user_id": user_id,
+                        "validation_notes": parsed.validation_notes,
+                    })
+            response_str = parsed.text
+        else:
+            # Fallback when no LLMEngine injected
+            context_str = "; ".join(memory_strings) if memory_strings else ""
+            response_str = (
+                f"Context: {context_str}\n"
+                f"Tone: {adaptation_ctx.tone}, Style: {adaptation_ctx.style}\n"
+                f"User: {message}"
+            )
 
         # Step 5 — Surface triggered insight moments
         timing_ctx = self._make_timing_context()

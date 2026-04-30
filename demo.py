@@ -22,6 +22,8 @@ from luma.api.controllers.personalization_controller import router as personaliz
 from luma.api.middleware.logging import LoggingMiddleware
 from luma.api.middleware.error_handler import ErrorHandlerMiddleware
 from luma.api.services.luma_service import LumaService
+from luma.api.factory import build_llm_engine
+from luma.core.structured_logger import StructuredLogger
 
 
 # ---------------------------------------------------------------------------
@@ -100,12 +102,18 @@ def build_demo_service() -> LumaService:
     teacher_mode = MagicMock()
     teacher_mode.teach.return_value = teaching_session
 
+    # Build LLMEngine using the factory (will be None if OPENAI_API_KEY not set)
+    logger = StructuredLogger()
+    llm_engine = build_llm_engine(logger)
+
     return LumaService(
         memory_interface=memory,
         insight_engine=insight_engine,
         insight_moments_engine=insight_moments_engine,
         personalization_engine=personalization_engine,
         teacher_mode=teacher_mode,
+        llm_engine=llm_engine,
+        logger=logger,
     )
 
 
