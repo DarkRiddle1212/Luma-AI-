@@ -5,7 +5,10 @@ import os
 import google.generativeai as genai
 
 # Configure API
-api_key = "YOUR_GEMINI_API_KEY_HERE"
+api_key = os.environ.get("GEMINI_API_KEY", "")
+if not api_key:
+    print("Error: GEMINI_API_KEY environment variable not set")
+    exit(1)
 genai.configure(api_key=api_key)
 
 # Create model

@@ -10,7 +10,7 @@ Your Gemini API key has been successfully configured and tested!
 
 ### 1. Got Your API Key ✅
 - Obtained from: https://makersuite.google.com/app/apikey
-- API Key: `YOUR_GEMINI_API_KEY_HERE`
+- API Key: `[REDACTED - set GEMINI_API_KEY in .env]`
 - Status: **Active and Working**
 
 ### 2. Configured Your Environment ✅
@@ -110,7 +110,7 @@ Your `.env` file is configured with:
 LLM_PROVIDER=gemini
 
 # Gemini Configuration
-GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+GEMINI_API_KEY=your-gemini-api-key-here
 GEMINI_MODEL=gemini-2.5-flash
 GEMINI_TIMEOUT=30.0
 GEMINI_MAX_TOKENS=1024
